@@ -1,0 +1,8 @@
+# Location to private key if using (absolute path)
+SSH_PRIVATE_KEY=
+SSH_USER="user"
+SSH_HOST="host"
+SSH_PORT=22
+
+# Magento 2 root directory in remote (absolute path)
+SSH_M2_ROOT_DIR="/var/www/magento2/"

@@ -255,15 +255,16 @@ Version $VERSION
         -t,     --type             Entity Type (category|product)
         -i,     --id               Entity ID
         -h,     --help             Display this help and exit
-        -d,     --debug            Display this help and exit
+        -dr     --dry-run          Show what would have been transferred
+        -d,     --debug            Enable the debug mode (set -x)
         -v,     --version          Output version information and exit
         -u,     --update           Self-update the script from Git repository
                 --self-update      Self-update the script from Git repository
 
     Examples:
-        $(basename "$0") --type=... --id=... [--debug] [--version] [--self-update] [--help]
+        $(basename "$0") --type=... --id=... [--dry-run] [--debug] [--version] [--self-update] [--help]
 
-$(tput setaf 136)For SSH params, it's recommended to use the config file (~/.m2media.conf or ./.m2media.conf)${_reset}
+$(tput setaf 136)For SSH params, it's recommended to use the config file (~/${CONFIG_FILE} or ./${CONFIG_FILE})${_reset}
 "
     _printPoweredBy
     exit 1
@@ -272,6 +273,7 @@ $(tput setaf 136)For SSH params, it's recommended to use the config file (~/.m2m
 function checkCmdDependencies()
 {
     local _dependencies=(
+      rsync
       ssh
       sed
       wget
@@ -299,6 +301,9 @@ function processArgs()
             -i|--id=*)
                 ENTITY_ID="${arg#*=}"
             ;;
+            -dr|--dry-run)
+                DRY_RUN=1
+            ;;
             --debug)
                 DEBUG=1
                 set -o xtrace
@@ -319,6 +324,7 @@ function processArgs()
     done
 
     validateArgs
+    sanitizeArgs
 }
 
 function initDefaultArgs()
@@ -346,11 +352,19 @@ function loadConfigValues()
     fi
 }
 
+function sanitizeArgs()
+{
+    # remove trailing /
+    if [[ ! -z "$SSH_M2_ROOT_DIR" ]]; then
+        SSH_M2_ROOT_DIR="${SSH_M2_ROOT_DIR%/}"
+    fi
+}
+
 function validateArgs()
 {
     ERROR_COUNT=0
 
-     if [[ -z "$ENTITY_TYPE" ]]; then
+    if [[ -z "$ENTITY_TYPE" ]]; then
         _error "Entity type (--type=...) cannot be empty"
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
@@ -370,44 +384,48 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
+    if [[ -z "$SSH_HOST" ]]; then
+        _error "SSH_HOST param cannot be empty"
+        ERROR_COUNT=$((ERROR_COUNT + 1))
+    fi
+
+    if [[ -z "$SSH_USER" ]]; then
+        _error "SSH_USER param cannot be empty"
+        ERROR_COUNT=$((ERROR_COUNT + 1))
+    fi
+
+    if [[ -z "$SSH_M2_ROOT_DIR" ]]; then
+        _error "SSH_M2_ROOT_DIR param cannot be empty"
+        ERROR_COUNT=$((ERROR_COUNT + 1))
+    fi
+
+# @todo Check why it's not working
+#    if [[ -z "$SSH_HOST" || -z "$SSH_USER" || $SSH_M2_ROOT_DIR ]]; then
+#        _note "Use config file (~/${CONFIG_FILE} or ./${CONFIG_FILE})"
+#        ERROR_COUNT=$((ERROR_COUNT + 1))
+#    fi
+
     #echo "$ERROR_COUNT"
     [[ "$ERROR_COUNT" -gt 0 ]] && exit 1
 }
 
-function getDbPrefix()
-{
-    echo $(php -r '$env = include "./app/etc/env.php"; echo $env["db"]["table_prefix"];')
-}
-
-function getDbHost()
-{
-    echo $(php -r '$env = include "./app/etc/env.php"; echo $env["db"]["connection"]["default"]["host"];')
-}
-
-function getDbUser()
-{
-    echo $(php -r '$env = include "./app/etc/env.php"; echo $env["db"]["connection"]["default"]["username"];')
-}
-
-function getDbPass()
-{
-    echo $(php -r '$env = include "./app/etc/env.php"; echo $env["db"]["connection"]["default"]["password"];')
-}
-
-function getDbName()
-{
-    echo $(php -r '$env = include "./app/etc/env.php"; echo $env["db"]["connection"]["default"]["dbname"];')
-}
-
 function prepareDBParams()
 {
-    DB_PREFIX=$(getDbPrefix)
-    DB_HOST=$(getDbHost)
-    DB_USER=$(getDbUser)
-    DB_PASS=$(getDbPass)
-    DB_NAME=$(getDbName)
+    eval "$(php -r '
+      $env = include "./app/etc/env.php";
+      echo "declare -A config=()\n";
+      echo "config[db.prefix]=" . escapeshellarg($env["db"]["table_prefix"]) . "\n";
+      echo "config[db.host]=" . escapeshellarg($env["db"]["connection"]["default"]["host"]) . "\n";
+      echo "config[db.username]=" . escapeshellarg($env["db"]["connection"]["default"]["username"]) . "\n";
+      echo "config[db.password]=" . escapeshellarg($env["db"]["connection"]["default"]["password"]) . "\n";
+      echo "config[db.dbname]=" . escapeshellarg($env["db"]["connection"]["default"]["dbname"]) . "\n";
+    ')"
 
-    echo "DB_PREFIX: $DB_PREFIX , DB_HOST: $DB_HOST , DB_USER: $DB_USER , DB_PASS: $DB_PASS , DB_NAME: $DB_NAME"
+    DB_PREFIX="${config[db.prefix]}"
+    DB_HOST="${config[db.host]}"
+    DB_USER="${config[db.username]}"
+    DB_PASS="${config[db.password]}"
+    DB_NAME="${config[db.dbname]}"
 }
 
 function queryMysql()
@@ -419,22 +437,32 @@ function getImages()
 {
     local _results _images
     SQL_QUERY="SELECT DISTINCT cpev.value FROM catalog_product_entity e INNER JOIN catalog_category_product ccp ON e.entity_id = ccp.product_id INNER JOIN catalog_category_entity cce ON ccp.category_id = cce.entity_id INNER JOIN catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id INNER JOIN eav_attribute ea ON cpev.attribute_id = ea.attribute_id AND ea.attribute_code IN ('image', 'thumbnail', 'small_image') AND ea.entity_type_id = 4 WHERE ccp.category_id = '${ENTITY_ID}'";
-    _results=$(queryMysql)
-    echo "$_results" | tail -n+3
+    queryMysql
 }
 
 function downloadMediaFiles()
 {
-    local _images
-    # Collect images in array
-    _images=$(getImages)
-    echo "${_images[@]}"
+    local _images _rsReturn _sshPrivateKeyParam _dryRunParam
 
-    # Get Images Path by type & id
+    _images=( $( for i in $(getImages) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
+
     _arrow "Downloading media files (${#_images[@]})..."
-
     # Remote connect and download those images
+    if [[ ! -z "$SSH_PRIVATE_KEY" ]]; then
+        _sshPrivateKeyParam=" -i $SSH_PRIVATE_KEY"
+    fi
 
+    # declare -a _images=( "/1/-/1-m2-region-city-dropdown-admin-menu.png" "/2/-/2-m2-region-city-dropdown-general-settings.png" )
+
+    # @todo handle --dry-run
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        _dryRunParam=" --dry-run"
+    fi
+    rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyParam}" --progress --stats "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
+    _rsReturn=$?
+    if [[ "$_rsReturn" -ne 0 ]]; then
+        _die "Could not download media files. Please check your SSH settings or media directory permissions."
+    fi
 }
 
 function initUserInputWizard()
@@ -467,15 +495,25 @@ SCRIPT_URL='https://raw.githubusercontent.com/MagePsycho/magento2-media-download
 SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 ABS_SCRIPT_PATH=$(readlink -f "$SCRIPT_LOCATION")
 
-CONFIG_FILE=".m2media.conf"
+CONFIG_FILE=".m2media_ssh.conf"
+DRY_RUN=0
 INSTALL_DIR=
 ENTITY_TYPE=
 ENTITY_ID=
+
+# DB
 DB_PREFIX=
 DB_HOST=
 DB_USER=
 DB_PASS=
 DB_NAME=
+
+# SSH
+SSH_PRIVATE_KEY=
+SSH_HOST=
+SSH_PORT=22
+SSH_USER=
+SSH_M2_ROOT_DIR=
 
 function main()
 {
