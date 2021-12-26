@@ -495,7 +495,7 @@ SCRIPT_URL='https://raw.githubusercontent.com/MagePsycho/magento2-media-download
 SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 ABS_SCRIPT_PATH=$(readlink -f "$SCRIPT_LOCATION")
 
-CONFIG_FILE=".m2media_ssh.conf"
+CONFIG_FILE=".m2media.conf"
 DRY_RUN=0
 INSTALL_DIR=
 ENTITY_TYPE=
