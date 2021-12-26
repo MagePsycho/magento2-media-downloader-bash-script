@@ -442,23 +442,22 @@ function getImages()
 
 function downloadMediaFiles()
 {
-    local _images _rsReturn _sshPrivateKeyParam _dryRunParam
+    local _images _rsReturn _sshPrivateKeyOption _dryRunOption
 
     _images=( $( for i in $(getImages) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
 
     _arrow "Downloading media files (${#_images[@]})..."
     # Remote connect and download those images
     if [[ ! -z "$SSH_PRIVATE_KEY" ]]; then
-        _sshPrivateKeyParam=" -i $SSH_PRIVATE_KEY"
+        _sshPrivateKeyOption=" -i $SSH_PRIVATE_KEY"
     fi
 
-    # declare -a _images=( "/1/-/1-m2-region-city-dropdown-admin-menu.png" "/2/-/2-m2-region-city-dropdown-general-settings.png" )
+    declare -a _images=( "/r/o/rovus_victor_vacuum_cleaner_lifstyle_1_1.jpg" "/0/1/01_750231_en_2.jpg" )
 
-    # @todo handle --dry-run
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        _dryRunParam=" --dry-run"
+        _dryRunOption="--dry-run"
     fi
-    rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyParam}" --progress --stats "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
+    rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --info=progress2 --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
     _rsReturn=$?
     if [[ "$_rsReturn" -ne 0 ]]; then
         _die "Could not download media files. Please check your SSH settings or media directory permissions."
