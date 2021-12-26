@@ -39,7 +39,7 @@ cp .m2media.conf.dist ~/.m2media.conf
 ```
 m2-media-downloader --help
 ```
-![M2 Media Downloader Help](https://github.com/MagePsycho/magento2-media-downloader-bash-script/raw/master/docs/magento2-media-downloader-bash-script-help.png)
+![M2 Media Downloader Help](https://github.com/MagePsycho/magento2-media-downloader-bash-script/raw/main/docs/magento2-media-downloader-bash-script-help.png)
 
 **To download the category images**
 ```
