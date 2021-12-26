@@ -69,7 +69,8 @@ m2-media-downloader --update
 ```
 
 ## TODOS
-- [x] Option to run command with `--dry-run`
+- [x] Support of `--dry-run` option
+- [ ] Option to download entire media folder
+- [ ] Download color swatches in case of configurable product
 - [ ] Option to download by multiple product/category ids
-- [ ] Option to download entire media gallery
 
