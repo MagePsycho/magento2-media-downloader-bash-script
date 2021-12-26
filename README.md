@@ -1,6 +1,15 @@
 # Magento 2 Media Downloader
 
-This is a bash script to quickly download the catalog images for your Magento 2 development from LIVE or STAGING server.
+This is a bash script to quickly download the catalog images for your Magento 2 development from a LIVE or STAGING server.
+
+**When to use this script?**
+* If you don't have enough space to download the entire media folder
+* If the entire media folder is huge to download *(time-consuming)*
+* If you are just concerned with certain category pages for development *(no need to download the entire media folder)*
+* If you are just concerned with certain product pages for development *(no need to download the entire media folder)*
+
+Moreover, the bash script works out of the box for any `*nix` system.  
+Just copy the script and start downloading the required media files for quick development.
 
 ## INSTALL
 You can simply download the script file and give the executable permission.
@@ -68,9 +77,13 @@ m2-media-downloader --type=product --id=<productId>
 m2-media-downloader --update
 ```
 
+## BONUS
+If you want to backup the entire media folder along with code & database, you can use this script:  
+https://github.com/MagePsycho/magento2-db-code-backup-bash-script
+
 ## TODOS
 - [x] Support of `--dry-run` option
-- [ ] Option to download entire media folder
+- [ ] Option to download entire media folder (maybe not required, see **BONUS**)
 - [ ] Download color swatches in case of configurable product
 - [ ] Option to download by multiple product/category ids
 
