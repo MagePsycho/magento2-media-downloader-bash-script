@@ -433,18 +433,27 @@ function queryMysql()
    mysql -h ${DB_HOST} -u ${DB_USER} --password="${DB_PASS}" ${DB_NAME} --execute="${SQL_QUERY}"
 }
 
-function getImages()
+function getImagesByCategory()
 {
-    local _results _images
     SQL_QUERY="SELECT DISTINCT cpev.value FROM ${DB_PREFIX}catalog_product_entity e INNER JOIN ${DB_PREFIX}catalog_category_product ccp ON e.entity_id = ccp.product_id INNER JOIN ${DB_PREFIX}catalog_category_entity cce ON ccp.category_id = cce.entity_id INNER JOIN ${DB_PREFIX}catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id INNER JOIN ${DB_PREFIX}eav_attribute ea ON cpev.attribute_id = ea.attribute_id AND ea.attribute_code IN ('image', 'thumbnail', 'small_image') AND ea.entity_type_id = 4 WHERE ccp.category_id = '${ENTITY_ID}'";
+    queryMysql
+}
+
+function getImagesByProduct()
+{
+    # @todo handle for configurable color swatches
+    SQL_QUERY="SELECT DISTINCT main.value FROM ${DB_PREFIX}catalog_product_entity_media_gallery AS main INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value_to_entity AS entity ON main.value_id = entity.value_id INNER JOIN ${DB_PREFIX}eav_attribute AS attr ON main.attribute_id = attr.attribute_id AND attr.attribute_code = 'media_gallery' AND attr.entity_type_id = 4 INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value AS value ON main.value_id = value.value_id WHERE main.media_type = 'image' AND entity.entity_id = '${ENTITY_ID}' ORDER BY value.position ASC";
     queryMysql
 }
 
 function downloadMediaFiles()
 {
     local _images _rsReturn _sshPrivateKeyOption _dryRunOption
-
-    _images=( $( for i in $(getImages) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
+    if [[ "$ENTITY_TYPE" = 'category' ]]; then
+        _images=( $( for i in $(getImagesByCategory) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
+    elif [[ "$ENTITY_TYPE" = 'product' ]]; then
+        _images=( $( for i in $(getImagesByProduct) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
+    fi
 
     # Uncomment for quick testing
     #declare -a _images=( "/f/i/file1.jpg" "/f/i/file2.jpg" )
@@ -463,7 +472,7 @@ function downloadMediaFiles()
         _dryRunOption="--dry-run"
     fi
 
-    # @todo make it an array based options
+    # @todo make it as an array based options
     rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --info=progress2 --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
 
     _rsReturn=$?
