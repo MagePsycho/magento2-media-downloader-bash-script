@@ -445,13 +445,16 @@ function downloadMediaFiles()
     local _images _rsReturn _sshPrivateKeyOption _dryRunOption
 
     _images=( $( for i in $(getImages) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
-    declare -a _images=( "/r/o/rovus_victor_vacuum_cleaner_lifstyle_1_1.jpg" "/0/1/01_750231_en_2.jpg" )
+
+    # Uncomment for quick testing
+    #declare -a _images=( "/f/i/file1.jpg" "/f/i/file2.jpg" )
 
     if [[ ${#_images[@]} -eq 0 ]]; then
         _die "Could not find any images to download. Please check your input."
     fi
 
     _arrow "Downloading media files (${#_images[@]})..."
+
     # Remote connect and download those images
     if [[ ! -z "$SSH_PRIVATE_KEY" ]]; then
         _sshPrivateKeyOption=" -i $SSH_PRIVATE_KEY"
@@ -460,6 +463,7 @@ function downloadMediaFiles()
         _dryRunOption="--dry-run"
     fi
 
+    # @todo make it an array based options
     rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --info=progress2 --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
 
     _rsReturn=$?
