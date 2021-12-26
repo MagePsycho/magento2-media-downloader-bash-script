@@ -436,7 +436,7 @@ function queryMysql()
 function getImages()
 {
     local _results _images
-    SQL_QUERY="SELECT DISTINCT cpev.value FROM catalog_product_entity e INNER JOIN catalog_category_product ccp ON e.entity_id = ccp.product_id INNER JOIN catalog_category_entity cce ON ccp.category_id = cce.entity_id INNER JOIN catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id INNER JOIN eav_attribute ea ON cpev.attribute_id = ea.attribute_id AND ea.attribute_code IN ('image', 'thumbnail', 'small_image') AND ea.entity_type_id = 4 WHERE ccp.category_id = '${ENTITY_ID}'";
+    SQL_QUERY="SELECT DISTINCT cpev.value FROM ${DB_PREFIX}catalog_product_entity e INNER JOIN ${DB_PREFIX}catalog_category_product ccp ON e.entity_id = ccp.product_id INNER JOIN ${DB_PREFIX}catalog_category_entity cce ON ccp.category_id = cce.entity_id INNER JOIN ${DB_PREFIX}catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id INNER JOIN ${DB_PREFIX}eav_attribute ea ON cpev.attribute_id = ea.attribute_id AND ea.attribute_code IN ('image', 'thumbnail', 'small_image') AND ea.entity_type_id = 4 WHERE ccp.category_id = '${ENTITY_ID}'";
     queryMysql
 }
 
@@ -445,28 +445,27 @@ function downloadMediaFiles()
     local _images _rsReturn _sshPrivateKeyOption _dryRunOption
 
     _images=( $( for i in $(getImages) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
+    declare -a _images=( "/r/o/rovus_victor_vacuum_cleaner_lifstyle_1_1.jpg" "/0/1/01_750231_en_2.jpg" )
+
+    if [[ ${#_images[@]} -eq 0 ]]; then
+        _die "Could not find any images to download. Please check your input."
+    fi
 
     _arrow "Downloading media files (${#_images[@]})..."
     # Remote connect and download those images
     if [[ ! -z "$SSH_PRIVATE_KEY" ]]; then
         _sshPrivateKeyOption=" -i $SSH_PRIVATE_KEY"
     fi
-
-    declare -a _images=( "/r/o/rovus_victor_vacuum_cleaner_lifstyle_1_1.jpg" "/0/1/01_750231_en_2.jpg" )
-
     if [[ "$DRY_RUN" -eq 1 ]]; then
         _dryRunOption="--dry-run"
     fi
+
     rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --info=progress2 --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
+
     _rsReturn=$?
     if [[ "$_rsReturn" -ne 0 ]]; then
         _die "Could not download media files. Please check your SSH settings or media directory permissions."
     fi
-}
-
-function initUserInputWizard()
-{
-    :
 }
 
 function printSuccessMessage()
@@ -476,7 +475,7 @@ function printSuccessMessage()
     echo "################################################################"
     echo " >> Entity Type           : ${ENTITY_TYPE}"
     echo " >> Entity ID             : ${ENTITY_ID}"
-    echo " >> Downloaded Dir        : ${INSTALL_DIR}/pub/media/"
+    echo " >> Downloaded Dir        : ${INSTALL_DIR}/pub/media/catalog/${ENTITY_TYPE}"
     echo "################################################################"
     _printPoweredBy
 }
