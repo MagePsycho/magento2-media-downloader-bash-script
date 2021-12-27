@@ -112,7 +112,7 @@ function _seekValue()
     fi
 
     _msg="${_msg}: "
-    printf "$_msg\n➜ "
+    printf "%s\n➜ " "$_msg"
     read READVALUE
 
     # Inline input
@@ -186,19 +186,20 @@ function _checkRootUser()
 }
 
 function _semVerToInt() {
-  local _sem_ver
-  _sem_ver="${1:?No version number supplied}"
-  _sem_ver="${_sem_ver//[^0-9.]/}"
+  local _semVer
+  _semVer="${1:?No version number supplied}"
+  _semVer="${_semVer//[^0-9.]/}"
   # shellcheck disable=SC2086
-  set -- ${_sem_ver//./ }
+  set -- ${_semVer//./ }
   printf -- '%d%02d%02d' "${1}" "${2:-0}" "${3:-0}"
 }
 
 function _selfUpdate()
 {
-    local _tmpFile=$(mktemp -p "" "XXXXX.sh")
+    local _tmpFile _newVersion
+    _tmpFile=$(mktemp -p "" "XXXXX.sh")
     curl -s -L "$SCRIPT_URL" > "$_tmpFile" || _die "Couldn't download the file"
-    local _newVersion=$(awk -F'[="]' '/^VERSION=/{print $3}' "$_tmpFile")
+    _newVersion=$(awk -F'[="]' '/^VERSION=/{print $3}' "$_tmpFile")
     if [[ "$(_semVerToInt $VERSION)" < "$(_semVerToInt $_newVersion)" ]]; then
         printf "Updating script \e[31;1m%s\e[0m -> \e[32;1m%s\e[0m\n" "$VERSION" "$_newVersion"
         printf "(Run command: %s --version to check the version)" "$(basename "$0")"
@@ -214,8 +215,8 @@ function _selfUpdate()
 
 function _printPoweredBy()
 {
-    local mp_ascii
-    mp_ascii='
+    local _mpAscii
+    _mpAscii='
    __  ___              ___               __
   /  |/  /__ ____ ____ / _ \___ __ ______/ /  ___
  / /|_/ / _ `/ _ `/ -_) ___(_-</ // / __/ _ \/ _ \
@@ -225,7 +226,7 @@ function _printPoweredBy()
     cat <<EOF
 ${_green}
 Powered By:
-$mp_ascii
+$_mpAscii
 
  >> Store: ${_reset}${_underline}${_blue}https://www.magepsycho.com${_reset}${_reset}${_green}
  >> Blog:  ${_reset}${_underline}${_blue}https://blog.magepsycho.com${_reset}${_reset}${_green}
@@ -342,8 +343,8 @@ function assertMage2Directory()
 function loadConfigValues()
 {
     # Load config if exists in home(~/)
-    if [[ -f "$HOME/${CONFIG_FILE}" ]]; then
-        source "$HOME/${CONFIG_FILE}"
+    if [[ -f "${HOME}/${CONFIG_FILE}" ]]; then
+        source "${HOME}/${CONFIG_FILE}"
     fi
 
     # Load config if exists in project (./)
@@ -355,7 +356,7 @@ function loadConfigValues()
 function sanitizeArgs()
 {
     # remove trailing /
-    if [[ ! -z "$SSH_M2_ROOT_DIR" ]]; then
+    if [[ -n "$SSH_M2_ROOT_DIR" ]]; then
         SSH_M2_ROOT_DIR="${SSH_M2_ROOT_DIR%/}"
     fi
 }
@@ -369,7 +370,7 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-    if [[ ! -z "$ENTITY_TYPE" && "$ENTITY_TYPE" != @(category|product) ]]; then
+    if [[ -n "$ENTITY_TYPE" && "$ENTITY_TYPE" != @(category|product) ]]; then
         _error "Entity type (--type=...) is not valid. Supported: category|product"
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
@@ -379,7 +380,7 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-    if [[ ! -z "$ENTITY_ID" ]]  && [[ -z "${ENTITY_ID##*[!0-9]*}" ]]; then
+    if [[ -n "$ENTITY_ID" ]]  && [[ -z "${ENTITY_ID##*[!0-9]*}" ]]; then
         _error "Entity ID (--id=...) is not valid"
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
@@ -399,11 +400,10 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-# @todo Check why it's not working
-#    if [[ -z "$SSH_HOST" || -z "$SSH_USER" || $SSH_M2_ROOT_DIR ]]; then
-#        _note "Use config file (~/${CONFIG_FILE} or ./${CONFIG_FILE})"
-#        ERROR_COUNT=$((ERROR_COUNT + 1))
-#    fi
+    if [[ -z "$SSH_HOST" || -z "$SSH_USER" || -z "$SSH_M2_ROOT_DIR" ]]; then
+        _note "Use config file (~/${CONFIG_FILE} or ./${CONFIG_FILE}) for SSH settings."
+        ERROR_COUNT=$((ERROR_COUNT + 1))
+    fi
 
     #echo "$ERROR_COUNT"
     [[ "$ERROR_COUNT" -gt 0 ]] && exit 1
@@ -430,7 +430,7 @@ function prepareDBParams()
 
 function queryMysql()
 {
-   mysql -h ${DB_HOST} -u ${DB_USER} --password="${DB_PASS}" ${DB_NAME} --execute="${SQL_QUERY}"
+   mysql -h "${DB_HOST}" -u "${DB_USER}" --password="${DB_PASS}" "${DB_NAME}" --execute="${SQL_QUERY}"
 }
 
 function getImagesByCategory()
@@ -465,7 +465,7 @@ function downloadMediaFiles()
     _arrow "Downloading media files (${#_images[@]})..."
 
     # Remote connect and download those images
-    if [[ ! -z "$SSH_PRIVATE_KEY" ]]; then
+    if [[ -n "$SSH_PRIVATE_KEY" ]]; then
         _sshPrivateKeyOption=" -i $SSH_PRIVATE_KEY"
     fi
     if [[ "$DRY_RUN" -eq 1 ]]; then
