@@ -8,7 +8,7 @@ This is a bash script to quickly download the catalog images for your Magento 2 
 * If you are just concerned with certain category pages for development *(no need to download the entire media folder)*
 * If you are just concerned with certain product pages for development *(no need to download the entire media folder)*
 
-Moreover, the bash script works out of the box for any `*nix` system.  
+Moreover, the bash script just works out of the box for any `*nix` system.  
 Just copy the script and start downloading the required media files for quick development.
 
 ## INSTALL
@@ -18,7 +18,7 @@ curl -0 https://raw.githubusercontent.com/MagePsycho/magento2-media-downloader-b
 chmod +x m2-media-downloader.sh
 ```
 
-To make it system wide command
+To make it system-wide command (recommended)
 ```
 mv m2-media-downloader.sh ~/bin/m2-media-downloader
 
@@ -31,8 +31,8 @@ mv m2-media-downloader.sh ~/bin/m2-media-downloader
 ### Configure SSH Settings
 It uses `rsync` command to download the media files from remote.  
 In order to connect to remote via SSH, you need to configure the settings in either of the following locations:
-1. `~/.m2media.conf` - Home Directory (global)
-1. `./.m2media.conf` - Project Directory (local)
+1. `~/.m2media.conf` - Home Directory (global scope)
+1. `./.m2media.conf` - Project Directory (local scope)
 
 You can copy the `.m2media.conf.dist` file (sample provided in the repository) to the required location:
 ```
