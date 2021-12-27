@@ -58,9 +58,12 @@ SSH_M2_ROOT_DIR="/var/www/magento2/"
 
 **To display help**
 ```
+cd /path/to/magento2
 m2-media-downloader --help
 ```
 ![M2 Media Downloader Help](https://github.com/MagePsycho/magento2-media-downloader-bash-script/raw/main/docs/magento2-media-downloader-bash-script-help.png)
+
+*Note: You have to run the command from Magento 2 root directory*
 
 **To download the category images**
 ```
