@@ -65,7 +65,7 @@ m2-media-downloader --help
 
 *Note: You have to run the command from Magento 2 root directory*
 
-**To download the category images**
+**To download all the product images within a category**
 ```
 m2-media-downloader --type=category --id=<categoryId>
 ```
