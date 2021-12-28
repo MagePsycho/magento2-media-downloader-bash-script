@@ -75,6 +75,13 @@ m2-media-downloader --type=category --id=<categoryId>
 m2-media-downloader --type=product --id=<productId>
 ```
 
+**To test which images will be downloaded**  
+Use `--dry-run` option as:
+```
+m2-media-downloader --type=category --id=<categoryId> --dry-run
+m2-media-downloader --type=product --id=<productId> --dry-run
+```
+
 **To update the script**
 ```
 m2-media-downloader --update
