@@ -87,13 +87,47 @@ m2-media-downloader --type=product --id=<productId> --dry-run
 m2-media-downloader --update
 ```
 
-## BONUS
+## BONUS 1
+### How to download wysiwyg images?
+Since wysiwyg images are dispatched via `./pub/get.php`, you can modify the code as shown below.
+
+Find the following code in file `./pub/get.php`
+```php
+if (!$isAllowed($relativePath, $allowedResources)) {
+    require_once 'errors/404.php';
+    exit;
+}
+```
+And replace by the chunk below
+```php
+if (!$isAllowed($relativePath, $allowedResources)) {              
+    /* Customization by MagePsycho - Start */
+    $liveBaseUrl = '{your-live-url}'; # EDIT
+    try {
+        $absoluteFilePath = BP . '/pub/' . $relativePath;
+        $absoluteFileUrl = $liveBaseUrl . '/' . $relativePath;
+        $absoluteFileDir = dirname($absoluteFilePath);
+        if (!is_dir($absoluteFileDir)) {
+            mkdir($absoluteFileDir, 777, true);
+        }
+        file_put_contents($absoluteFilePath, file_get_contents(trim($absoluteFileUrl)));
+        file_put_contents(BP . '/log/download-image.log', $absoluteFilePath . ' -> ' . $absoluteFileUrl, FILE_APPEND | LOCK_EX);
+    } catch (Exception $e) {
+        require_once 'errors/404.php';
+        exit;
+    }
+    /* Customization by MagePsycho - End */
+}
+```
+Now your homepage will also look cool!
+
+## BONUS 2
 If you want to backup the entire media folder along with code & database, you can use this script:  
 https://github.com/MagePsycho/magento2-db-code-backup-bash-script
 
 ## TODOS
 - [x] Support of `--dry-run` option
-- [ ] Option to download entire media folder (maybe not required, see **BONUS**)
+- [ ] Option to download entire media folder (maybe not required, see **BONUS 2**)
 - [ ] Download color swatches in case of configurable product
 - [ ] Option to download by multiple product/category ids
 
