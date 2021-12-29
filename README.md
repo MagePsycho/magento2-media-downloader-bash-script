@@ -100,23 +100,22 @@ if (!$isAllowed($relativePath, $allowedResources)) {
 ```
 And replace by the chunk below
 ```php
-if (!$isAllowed($relativePath, $allowedResources)) {              
-    /* Customization by MagePsycho - Start */
-    $liveBaseUrl = '{your-live-url}'; # EDIT
+if (!$isAllowed($relativePath, $allowedResources)) { 
+    $liveBaseUrl = 'https://mystore.com'; # EDIT
     try {
         $absoluteFilePath = BP . '/pub/' . $relativePath;
-        $absoluteFileUrl = $liveBaseUrl . '/' . $relativePath;
+        $absoluteFileUrl = rtrim($liveBaseUrl, '/') . '/' . $relativePath;
         $absoluteFileDir = dirname($absoluteFilePath);
         if (!is_dir($absoluteFileDir)) {
-            mkdir($absoluteFileDir, 777, true);
+            mkdir($absoluteFileDir, 0777, true);
         }
         file_put_contents($absoluteFilePath, file_get_contents(trim($absoluteFileUrl)));
-        file_put_contents(BP . '/log/download-image.log', $absoluteFilePath . ' -> ' . $absoluteFileUrl, FILE_APPEND | LOCK_EX);
+        # Uncomment if you want log the downloaded files
+        #file_put_contents(BP . '/var/log/wysiwyg-images.log', $absoluteFilePath . ' -> ' . $absoluteFileUrl . PHP_EOL, FILE_APPEND | LOCK_EX);
     } catch (Exception $e) {
         require_once 'errors/404.php';
         exit;
     }
-    /* Customization by MagePsycho - End */
 }
 ```
 Now your homepage will also look cool!
